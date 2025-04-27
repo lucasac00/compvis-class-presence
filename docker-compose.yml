@@ -1,0 +1,25 @@
+version: '3'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: marrow
+      POSTGRES_PASSWORD: marrow123
+      POSTGRES_DB: marrow_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d/
+    ports:
+      - "5432:5432"
+volumes:
+  postgres_data:
