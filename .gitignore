@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/backend/lib/
 lib64/
 parts/
 sdist/
@@ -172,3 +172,32 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# dependencies
+/frontend/node_modules
+
+# next.js
+/frontend/.next/
+/frontend/out/
+
+# production
+/frontend/build
+
+# debug
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Zone.Identifier
+**/*.Identifier
