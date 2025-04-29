@@ -1,22 +1,31 @@
-## Does not work yet ...
+# Use official Python base image
+FROM python:3.10-slim-bullseye
 
-FROM python:3.10.3-slim-bullseye
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-RUN apt-get -y update
-RUN apt-get install -y --fix-missing \
+# Create and set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    gfortran \
+    libgtk2.0-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libpq-dev \
     git \
     wget \
     curl \
     graphicsmagick \
     libgraphicsmagick1-dev \
     libatlas-base-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libgtk2.0-dev \
-    libjpeg-dev \
     liblapack-dev \
     libswscale-dev \
     pkg-config \
@@ -24,22 +33,40 @@ RUN apt-get install -y --fix-missing \
     python3-numpy \
     software-properties-common \
     zip \
-    && apt-get clean && rm -rf /tmp/* /var/tmp/*
+    gfortran \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN cd ~ && \
-    mkdir -p dlib && \
-    git clone -b 'v19.9' --single-branch https://github.com/davisking/dlib.git dlib/ && \
-    cd  dlib/ && \
-    python3 setup.py install --yes USE_AVX_INSTRUCTIONS
+# Install dlib with AVX support using correct version and build flags
+RUN git clone -b 'v19.24.4' --single-branch https://github.com/davisking/dlib.git && \
+    cd dlib && \
+    python3 setup.py install --set USE_AVX_INSTRUCTIONS=yes
 
-COPY . /root/face_recognition
-RUN cd /root/face_recognition && \
-    pip3 install -r requirements.txt && \
-    python3 setup.py install
-
+# Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# # Copy application code
+# COPY . .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# RUN mkdir -p /app/students
+# VOLUME /app/students
+
+# # Database initialization (if needed)
+# # RUN python -c "from database.database import Base, engine; Base.metadata.create_all(bind=engine)"
+
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Copy application code with proper path handling
+COPY . /app/
+
+# Specifically ensure src directory exists
+RUN mkdir -p /app/src
+
+# Set PYTHONPATH to include source directory
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
+# Modify the CMD to point to correct location
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

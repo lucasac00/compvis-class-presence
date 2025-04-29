@@ -1,25 +1,50 @@
-version: '3'
+version: '3.8'
 services:
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://marrow:marrow123@db:5432/marrow_db
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/students:/app/students  # Persistent storage for student images
+    networks:
+      - marrow-net
+
   frontend:
     build: ./frontend
     ports:
       - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - marrow-net
+
   db:
-    image: postgres:latest
+    image: postgres:13-alpine  # Pinned version for stability
     environment:
       POSTGRES_USER: marrow
       POSTGRES_PASSWORD: marrow123
       POSTGRES_DB: marrow_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marrow -d marrow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/db/init:/docker-entrypoint-initdb.d/
-    ports:
-      - "5432:5432"
+      - ./backend/db/01_create_tables.sql:/docker-entrypoint-initdb.d/01_create_tables.sql
+  # Init script
+    networks:
+      - marrow-net
+
 volumes:
   postgres_data:
+
+networks:
+  marrow-net:
+    driver: bridge

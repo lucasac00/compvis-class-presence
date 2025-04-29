@@ -1,7 +1,8 @@
-from fastapi import FastAPI, WebSocket, UploadFile, File, HTTPException
+from fastapi import FastAPI, WebSocket, UploadFile, File, HTTPException, Form, Depends, Path
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 import cv2
 import numpy as np
 import os
@@ -13,10 +14,16 @@ from contextlib import asynccontextmanager
 from database.database import Base, SessionLocal, engine
 # Importe cada modelo individualmente
 from models.student import Student
-from models.classes import Class
+from models.class_ import Class
 from models.enrollment import Enrollment
 from models.attendance import Attendance
 from face_service.processor import FaceProcessor
+
+# Importe schemas
+from schemas.student import StudentCreate, StudentRead
+from schemas.class_ import ClassCreate, ClassRead
+from schemas.enrollment import EnrollmentCreate
+from schemas.attendance import AttendanceRead
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +36,8 @@ async def lifespan(app: FastAPI):
 # Configuração do FastAPI
 app = FastAPI(title="Marrow Attendance System", lifespan=lifespan)
 
+app.mount("/static/students", StaticFiles(directory="students"), name="students")
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +46,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # Rotas principais
 @app.get("/")
@@ -104,52 +120,69 @@ async def video_feed(websocket: WebSocket, class_id: int):
         db.close()
 
 # CRUD para Alunos
-@app.post("/students/", response_model=Student)
-async def create_student(name: str, image: UploadFile = File(...)):
-    db = SessionLocal()
-    try:
-        # Salva imagem
-        image_path = f"students/{name.replace(' ', '_')}.jpg"
-        with open(image_path, "wb") as buffer:
-            buffer.write(await image.read())
-        
-        # Cria registro no banco
-        student = Student(name=name, image_path=image_path)
-        db.add(student)
-        db.commit()
-        return student
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(500, str(e))
-    finally:
-        db.close()
+@app.post("/students/", response_model=StudentRead)
+async def create_student(name: str = Form(...), image: UploadFile = File(...), db: Session = Depends(get_db)):
+    os.makedirs("students", exist_ok=True)
+    image_path = f"students/{name.replace(' ', '_')}.jpg"
+    with open(image_path, "wb") as buffer:
+        buffer.write(await image.read())
+    
+    student = Student(name=name, image_path=image_path)
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    
+    return student
 
-@app.get("/students/", response_model=List[Student])
+@app.get("/students/", response_model=List[StudentRead])
 async def get_students():
     db = SessionLocal()
     students = db.query(Student).all()
     db.close()
     return students
 
-# CRUD para Aulas
-@app.post("/classes/", response_model=Class)
-async def create_class(description: str):
+@app.get("/classes/", response_model=List[ClassRead])
+async def get_classes():
     db = SessionLocal()
-    try:
-        new_class = Class(
-            start_time=datetime.now(),
-            description=description
-        )
-        db.add(new_class)
-        db.commit()
-        return new_class
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(500, str(e))
-    finally:
-        db.close()
+    classes = db.query(Class).all()
+    db.close()
+    return classes
 
-@app.get("/classes/{class_id}/attendance")
+@app.get("classes/{class_id}/students", response_model=List[StudentRead])
+async def get_students_by_class(class_id: int, db: Session = Depends(get_db)):
+    students = db.query(Student).join(Enrollment).filter(
+        Enrollment.class_id == class_id
+    ).all()
+    if not students:
+        raise HTTPException(status_code=404, detail="No students found for this class")
+    return students
+
+@app.delete("/students/{student_id}", status_code=204)
+async def delete_student(student_id: int = Path(...), db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Delete image if exists
+    if student.image_path and os.path.exists(student.image_path):
+        os.remove(student.image_path)
+    
+    db.delete(student)
+    db.commit()
+    return
+
+# CRUD para Aulas
+@app.post("/classes/", response_model=ClassRead)
+async def create_class(description: str = Form(...), db: Session = Depends(get_db)):
+    new_class = Class(
+        description=description
+    )
+    db.add(new_class)
+    db.commit()
+    db.refresh(new_class)
+    return new_class
+
+@app.get("/classes/{class_id}/attendance", response_model=List[AttendanceRead])
 async def get_attendance(class_id: int):
     db = SessionLocal()
     try:
@@ -159,6 +192,37 @@ async def get_attendance(class_id: int):
         return attendance
     finally:
         db.close()
+
+# CRUD para Matrículas (Enrollments)
+@app.post("/enrollments/")
+async def enroll_student(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
+    # Verifica se o aluno existe
+    student = db.query(Student).filter(Student.id == enrollment.student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Verifica se a aula existe
+    current_class = db.query(Class).filter(Class.id == enrollment.class_id).first()
+    if not current_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Verifica se já existe matrícula
+    existing_enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == enrollment.student_id,
+        Enrollment.class_id == enrollment.class_id
+    ).first()
+    if existing_enrollment:
+        raise HTTPException(status_code=400, detail="Student already enrolled in this class")
+    
+    # Cria a matrícula
+    new_enrollment = Enrollment(
+        student_id=enrollment.student_id,
+        class_id=enrollment.class_id
+    )
+    db.add(new_enrollment)
+    db.commit()
+
+    return {"message": "Student enrolled successfully"}
 
 if __name__ == "__main__":
     import uvicorn
