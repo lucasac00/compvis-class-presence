@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge"
 
 interface Class {
   id: number
-  start_time: string
   description: string
   student_count?: number
 }
@@ -93,7 +92,6 @@ export default function ClassList() {
         <TableRow>
           <TableHead>ID</TableHead>
           <TableHead>Description</TableHead>
-          <TableHead>Start Time</TableHead>
           <TableHead>Enrolled Students</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -103,7 +101,7 @@ export default function ClassList() {
           <TableRow key={classItem.id}>
             <TableCell>{classItem.id}</TableCell>
             <TableCell className="font-medium">{classItem.description}</TableCell>
-            <TableCell>{format(new Date(classItem.start_time), "PPp")}</TableCell>
+            {/* <TableCell>{format(new Date(classItem.start_time), "PPp")}</TableCell> */}
             <TableCell>
               <Badge variant="secondary" className="flex items-center w-fit">
                 <Users className="h-3 w-3 mr-1" />

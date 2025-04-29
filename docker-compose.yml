@@ -41,6 +41,14 @@ services:
   # Init script
     networks:
       - marrow-net
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - marrow-net
 
 volumes:
   postgres_data:

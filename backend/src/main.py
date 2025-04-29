@@ -78,14 +78,13 @@ async def video_feed(websocket: WebSocket, class_id: int):
 
         # Inicializa o processador facial
         processor = FaceProcessor(
-            students_data=[
+            expected_students=[
                 {
                     "id": s.id,
                     "name": s.name,
                     "image_path": s.image_path
                 } for s in students
             ],
-            image_folder="students"
         )
 
         while True:
@@ -148,7 +147,14 @@ async def get_classes():
     db.close()
     return classes
 
-@app.get("classes/{class_id}/students", response_model=List[StudentRead])
+@app.get("/classes/{class_id}", response_model=ClassRead)
+async def get_class(class_id: int, db: Session = Depends(get_db)):
+    current_class = db.query(Class).filter(Class.id == class_id).first()
+    if not current_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return current_class
+
+@app.get("/classes/{class_id}/students", response_model=List[StudentRead])
 async def get_students_by_class(class_id: int, db: Session = Depends(get_db)):
     students = db.query(Student).join(Enrollment).filter(
         Enrollment.class_id == class_id

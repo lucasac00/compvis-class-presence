@@ -315,7 +315,7 @@ export default function AttendancePage() {
                   >
                     <div className="flex items-center space-x-3">
                       <Avatar>
-                        <AvatarImage src={`http://localhost:8000/${student.image_path}`} alt={student.name} />
+                        <AvatarImage src={`http://localhost:8000/static/${student.image_path}`} alt={student.name} />
                         <AvatarFallback>{student.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div>

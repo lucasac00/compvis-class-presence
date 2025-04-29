@@ -12,18 +12,22 @@ class FaceProcessor:
         self.known_faces = self._load_known_faces()
     
     def _load_known_faces(self):
-        # Adapte para usar dados do banco
-        student_map = {remove_diacritics_and_spaces(s["name"]).lower(): s for s in self.expected_students}
-        
         known_faces = []
-        for student in os.listdir(self.main_folder):
-            student_name = os.path.splitext(student)[0]
-            normalized = remove_diacritics_and_spaces(student_name).lower()
-            
-            if normalized in student_map:
-                image = face_recognition.load_image_file(os.path.join(self.main_folder, student))
-                encoding = face_recognition.face_encodings(image)[0]
-                known_faces.append((student_map[normalized]["id"], encoding))
+        for student in self.expected_students:
+            try:
+                image_path = student.get("image_path")
+                print("Checking image path:", os.path.abspath(image_path))
+                print("Exists?", os.path.exists(image_path))
+                if not image_path or not os.path.exists(image_path):
+                    continue
+
+                image = face_recognition.load_image_file(image_path)
+                encodings = face_recognition.face_encodings(image)
+
+                if encodings:
+                    known_faces.append((student["id"], encodings[0]))
+            except Exception as e:
+                print(f"Error processing image for student ID {student.get('id')}: {e}")
         
         return known_faces
 
