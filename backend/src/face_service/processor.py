@@ -26,6 +26,8 @@ class FaceProcessor:
 
                 if encodings:
                     known_faces.append((student["id"], encodings[0]))
+                else:
+                    print(f"⚠️ No face found in {student['image_path']}")
             except Exception as e:
                 print(f"Error processing image for student ID {student.get('id')}: {e}")
         
@@ -33,9 +35,15 @@ class FaceProcessor:
 
     def process_frame(self, frame):
         small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        rgb_frame = small_frame[:, :, ::-1]
+        rgb_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
+        #rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
         
         face_locations = face_recognition.face_locations(rgb_frame)
+        print("Processing frame...")
+        print(f"Detected {len(face_locations)} faces")
+        if not face_locations:
+            return []
+
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
         
         recognized = []

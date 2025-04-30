@@ -34,27 +34,21 @@ export default function AttendancePage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout>()
 
   // Fetch class info and enrolled students
   useEffect(() => {
     const fetchClassInfo = async () => {
       try {
-        // Fetch class details
         const classResponse = await fetch(`http://localhost:8000/classes/${classId}`)
-        if (!classResponse.ok) {
-          throw new Error("Failed to fetch class information")
-        }
+        if (!classResponse.ok) throw new Error("Failed to fetch class information")
         const classData = await classResponse.json()
         setClassInfo(classData)
 
-        // Fetch enrolled students
         const studentsResponse = await fetch(`http://localhost:8000/classes/${classId}/students`)
-        if (!studentsResponse.ok) {
-          throw new Error("Failed to fetch enrolled students")
-        }
+        if (!studentsResponse.ok) throw new Error("Failed to fetch enrolled students")
         const studentsData = await studentsResponse.json()
 
-        // Initialize student list with recognition status
         setStudents(
           studentsData.map((student: Student) => ({
             ...student,
@@ -100,30 +94,18 @@ export default function AttendancePage() {
       setupWebcam()
       connectWebSocket()
     } else {
-      // Clean up video stream when component unmounts or attendance is stopped
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
+      // Cleanup
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop())
         videoRef.current.srcObject = null
       }
-
-      // Close WebSocket connection
-      if (wsRef.current) {
-        wsRef.current.close()
-        wsRef.current = null
-      }
+      if (wsRef.current) wsRef.current.close()
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
 
     return () => {
-      // Clean up on component unmount
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
-        stream.getTracks().forEach((track) => track.stop())
-      }
-
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (wsRef.current) wsRef.current.close()
     }
   }, [isActive, toast])
 
@@ -131,7 +113,6 @@ export default function AttendancePage() {
     wsRef.current = new WebSocket(`ws://localhost:8000/ws/attendance/${classId}`)
 
     wsRef.current.onopen = () => {
-      console.log("WebSocket connection established")
       toast({
         title: "Connected",
         description: "Facial recognition is now active",
@@ -150,19 +131,15 @@ export default function AttendancePage() {
         return
       }
 
-      // Update recognized students
-      if (data.recognized && data.recognized.length > 0) {
-        setStudents((prevStudents) =>
-          prevStudents.map((student) => ({
-            ...student,
-            recognized: data.recognized.includes(student.id) ? true : student.recognized,
-            timestamp: data.recognized.includes(student.id) ? data.timestamp : student.timestamp,
-          })),
-        )
+      if (data.recognized?.length > 0) {
+        setStudents(prev => prev.map(student => ({
+          ...student,
+          recognized: data.recognized.includes(student.id) || student.recognized,
+          timestamp: data.recognized.includes(student.id) ? data.timestamp : student.timestamp,
+        })))
 
-        // Show toast for newly recognized students
         data.recognized.forEach((id: number) => {
-          const student = students.find((s) => s.id === id && !s.recognized)
+          const student = students.find(s => s.id === id && !s.recognized)
           if (student) {
             toast({
               title: "Student Recognized",
@@ -181,56 +158,42 @@ export default function AttendancePage() {
         variant: "destructive",
       })
     }
-
-    wsRef.current.onclose = () => {
-      console.log("WebSocket connection closed")
-    }
   }
 
   const captureAndSendFrame = () => {
-    if (!canvasRef.current || !videoRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      return
-    }
+    if (!canvasRef.current || !videoRef.current || !wsRef.current) return
+    if (wsRef.current.readyState !== WebSocket.OPEN) return
 
-    const context = canvasRef.current.getContext("2d")
+    const context = canvasRef.current.getContext('2d')
     if (!context) return
 
-    // Set canvas dimensions to match video
     canvasRef.current.width = videoRef.current.videoWidth
     canvasRef.current.height = videoRef.current.videoHeight
-
-    // Draw current video frame to canvas
     context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height)
 
-    // Convert canvas to blob and send via WebSocket
     canvasRef.current.toBlob(
       (blob) => {
-        if (blob && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        if (blob && wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(blob)
         }
       },
-      "image/jpeg",
-      0.8,
+      'image/jpeg',
+      0.8
     )
   }
 
-  // Send video frames at regular intervals when active
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout
-
-    if (isActive && videoRef.current && videoRef.current.readyState === 4) {
-      intervalId = setInterval(captureAndSendFrame, 1000) // Send frame every second
+  const handleVideoCanPlay = () => {
+    if (isActive && !intervalRef.current) {
+      intervalRef.current = setInterval(captureAndSendFrame, 1000)
     }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-    }
-  }, [isActive])
+  }
 
   const toggleAttendance = () => {
     setIsActive(!isActive)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = undefined
+    }
   }
 
   if (loading) {
@@ -270,7 +233,14 @@ export default function AttendancePage() {
           <CardContent>
             <div className="relative aspect-video bg-slate-950 rounded-md overflow-hidden flex items-center justify-center">
               {isActive ? (
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover"
+                  onCanPlay={handleVideoCanPlay}
+                />
               ) : (
                 <div className="text-center text-slate-500">
                   <Camera className="h-12 w-12 mx-auto mb-2" />
@@ -278,10 +248,8 @@ export default function AttendancePage() {
                 </div>
               )}
 
-              {/* Hidden canvas for processing video frames */}
               <canvas ref={canvasRef} className="hidden" />
 
-              {/* Status indicator */}
               {isActive && (
                 <div className="absolute top-2 right-2">
                   <Badge variant="destructive" className="animate-pulse">

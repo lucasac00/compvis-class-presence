@@ -14,14 +14,13 @@ interface Attendance {
   student_id: number
   class_id: number
   register_time: string
-  present: boolean
-  student_name?: string
+  presence: boolean
+  //student_name?: string
 }
 
 interface ClassInfo {
   id: number
   description: string
-  start_time: string
 }
 
 export default function ClassAttendancePage() {
@@ -71,12 +70,13 @@ export default function ClassAttendancePage() {
     if (!attendanceRecords.length || !classInfo) return
 
     // Prepare CSV content
-    const headers = ["Student ID", "Student Name", "Register Time", "Present"]
+    //const headers = ["Student ID", "Student Name", "Register Time", "Presence"]
+    const headers = ["Student ID", "Register Time", "Presence"]
     const rows = attendanceRecords.map((record) => [
       record.student_id,
-      record.student_name || "Unknown",
+      //record.student_name || "Unknown",
       record.register_time,
-      record.present ? "Yes" : "No",
+      record.presence ? "Yes" : "No",
     ])
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
@@ -125,7 +125,7 @@ export default function ClassAttendancePage() {
             Class Details
           </CardTitle>
           <CardDescription>
-            {classInfo && <>Class started on {format(new Date(classInfo.start_time), "PPp")}</>}
+            {classInfo?.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -147,12 +147,12 @@ export default function ClassAttendancePage() {
                 {attendanceRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>{record.student_id}</TableCell>
-                    <TableCell className="font-medium">{record.student_name || "Unknown"}</TableCell>
+                    {/* <TableCell className="font-medium">{record.student_name || "Unknown"}</TableCell> */}
                     <TableCell>{format(new Date(record.register_time), "PPp")}</TableCell>
                     <TableCell>
-                      {record.present ? (
+                      {record.presence ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Present
+                          Presence
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">

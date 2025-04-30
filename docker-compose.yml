@@ -25,7 +25,7 @@ services:
       - marrow-net
 
   db:
-    image: postgres:13-alpine  # Pinned version for stability
+    image: postgres:13-alpine 
     environment:
       POSTGRES_USER: marrow
       POSTGRES_PASSWORD: marrow123
@@ -38,10 +38,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/01_create_tables.sql:/docker-entrypoint-initdb.d/01_create_tables.sql
-  # Init script
     networks:
       - marrow-net
   
+  # Adminer DBMS: only for dev, comment when deploying to prod
   adminer:
     image: adminer
     restart: always

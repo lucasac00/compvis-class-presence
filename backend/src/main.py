@@ -9,6 +9,8 @@ import os
 from datetime import datetime
 from typing import List
 from contextlib import asynccontextmanager
+from PIL import Image
+import io
 
 # Importe modelos e serviços
 from database.database import Base, SessionLocal, engine
@@ -61,12 +63,11 @@ async def root():
 
 # WebSocket para processamento de vídeo em tempo real
 @app.websocket("/ws/attendance/{class_id}")
-async def video_feed(websocket: WebSocket, class_id: int):
+async def video_feed(websocket: WebSocket, class_id: int, db: Session = Depends(get_db)):
     await websocket.accept()
-    db = SessionLocal()
-    
     try:
         # Carrega alunos matriculados na aula
+        print("Loading students for class ID:", class_id)
         current_class = db.query(Class).filter(Class.id == class_id).first()
         if not current_class:
             await websocket.send_json({"error": "Class not found"})
@@ -77,6 +78,7 @@ async def video_feed(websocket: WebSocket, class_id: int):
         ).all()
 
         # Inicializa o processador facial
+        print("Initializing FaceProcessor...")
         processor = FaceProcessor(
             expected_students=[
                 {
@@ -86,11 +88,20 @@ async def video_feed(websocket: WebSocket, class_id: int):
                 } for s in students
             ],
         )
-
+        print("FaceProcessor initialized with students:", students)
         while True:
             # Recebe frame do frontend
+            print("Starting to receive frame...")
             data = await websocket.receive_bytes()
+            if not data:
+                print("⚠️ No data received")
+                continue
+            print("Data received...")
             frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+
+            if frame is None:
+                print("⚠️ Failed to decode frame")
+                continue
             
             # Processa frame
             recognized_ids = processor.process_frame(frame)
@@ -101,7 +112,7 @@ async def video_feed(websocket: WebSocket, class_id: int):
                     student_id=student_id,
                     class_id=class_id,
                     register_time=datetime.now(),
-                    present=True
+                    presence=True
                 )
                 db.add(attendance)
             
@@ -115,16 +126,17 @@ async def video_feed(websocket: WebSocket, class_id: int):
 
     except Exception as e:
         print(f"WebSocket Error: {str(e)}")
-    finally:
-        db.close()
 
 # CRUD para Alunos
 @app.post("/students/", response_model=StudentRead)
 async def create_student(name: str = Form(...), image: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs("students", exist_ok=True)
     image_path = f"students/{name.replace(' ', '_')}.jpg"
-    with open(image_path, "wb") as buffer:
-        buffer.write(await image.read())
+    image_data = await image.read()
+    img = Image.open(io.BytesIO(image_data))
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    img.save(image_path, "JPEG", quality=85)
     
     student = Student(name=name, image_path=image_path)
     db.add(student)
