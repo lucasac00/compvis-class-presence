@@ -1,10 +1,10 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, Boolean, DateTime, ForeignKey
 from database.database import Base
 
 class Attendance(Base):
     __tablename__ = 'attendance'
-    id = Column(Integer, primary_key=True)
-    student_id = Column(Integer, ForeignKey('student.id'))
-    class_id = Column(Integer, ForeignKey('class.id'))
-    presence = Column(Boolean, default=True)
-    register_time = Column(DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey('student.id'), nullable=False)
+    bout_id = Column(Integer, ForeignKey('bout.id'), nullable=False)
+    presence = Column(Boolean, default=False)
+    register_time = Column(DateTime(timezone=True))

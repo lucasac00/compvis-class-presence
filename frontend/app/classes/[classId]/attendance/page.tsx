@@ -12,10 +12,17 @@ import { format } from "date-fns"
 interface Attendance {
   id: number
   student_id: number
-  class_id: number
+  bout_id: number
   register_time: string
   presence: boolean
-  //student_name?: string
+  bout?: Bout
+}
+
+interface Bout {
+  id: number
+  class_id: number
+  start_time: string
+  end_time: string | null
 }
 
 interface ClassInfo {
@@ -38,19 +45,26 @@ export default function ClassAttendancePage() {
       try {
         // Fetch class details
         const classResponse = await fetch(`http://localhost:8000/classes/${classId}`)
-        if (!classResponse.ok) {
-          throw new Error("Failed to fetch class information")
-        }
+        if (!classResponse.ok) throw new Error("Failed to fetch class information")
         const classData = await classResponse.json()
         setClassInfo(classData)
 
-        // Fetch attendance records
-        const attendanceResponse = await fetch(`http://localhost:8000/classes/${classId}/attendance`)
-        if (!attendanceResponse.ok) {
-          throw new Error("Failed to fetch attendance records")
-        }
-        const attendanceData = await attendanceResponse.json()
-        setAttendanceRecords(attendanceData)
+        // Fetch bouts for the class
+        const boutsResponse = await fetch(`http://localhost:8000/classes/${classId}/bouts`)
+        if (!boutsResponse.ok) throw new Error("Failed to fetch bouts")
+        const boutsData: Bout[] = await boutsResponse.json()
+
+        // Fetch attendances for each bout
+        const attendancesPromises = boutsData.map(async (bout) => {
+          const response = await fetch(`http://localhost:8000/bouts/${bout.id}/attendance`)
+          if (!response.ok) return []
+          const attendances: Attendance[] = await response.json()
+          return attendances.map(a => ({ ...a, bout }))
+        })
+
+        const attendancesArrays = await Promise.all(attendancesPromises)
+        setAttendanceRecords(attendancesArrays.flat())
+        
       } catch (error) {
         console.error("Error fetching data:", error)
         toast({
@@ -69,19 +83,15 @@ export default function ClassAttendancePage() {
   const exportToCSV = () => {
     if (!attendanceRecords.length || !classInfo) return
 
-    // Prepare CSV content
-    //const headers = ["Student ID", "Student Name", "Register Time", "Presence"]
-    const headers = ["Student ID", "Register Time", "Presence"]
+    const headers = ["Student ID", "Session Start", "Register Time", "Presence"]
     const rows = attendanceRecords.map((record) => [
       record.student_id,
-      //record.student_name || "Unknown",
+      record.bout?.start_time ? format(new Date(record.bout.start_time), "PPpp") : "Unknown",
       record.register_time,
       record.presence ? "Yes" : "No",
     ])
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
-
-    // Create download link
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -122,7 +132,7 @@ export default function ClassAttendancePage() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Calendar className="mr-2 h-5 w-5" />
-            Class Details
+            Class Sessions and Attendance
           </CardTitle>
           <CardDescription>
             {classInfo?.description}
@@ -138,7 +148,7 @@ export default function ClassAttendancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Student ID</TableHead>
-                  <TableHead>Student Name</TableHead>
+                  <TableHead>Session Start</TableHead>
                   <TableHead>Register Time</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
@@ -147,12 +157,18 @@ export default function ClassAttendancePage() {
                 {attendanceRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>{record.student_id}</TableCell>
-                    {/* <TableCell className="font-medium">{record.student_name || "Unknown"}</TableCell> */}
-                    <TableCell>{format(new Date(record.register_time), "PPp")}</TableCell>
+                    <TableCell>
+                      {record.bout?.start_time 
+                        ? format(new Date(record.bout.start_time), "PPpp")
+                        : "Unknown bout"}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(record.register_time), "PPpp")}
+                    </TableCell>
                     <TableCell>
                       {record.presence ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Presence
+                          Present
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">

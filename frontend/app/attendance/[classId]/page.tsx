@@ -25,12 +25,13 @@ export default function AttendancePage() {
   const classId = params.classId as string
   const router = useRouter()
   const { toast } = useToast()
-
+  
   const [classInfo, setClassInfo] = useState<{ description: string } | null>(null)
   const [students, setStudents] = useState<RecognizedStudent[]>([])
   const [isActive, setIsActive] = useState(false)
   const [loading, setLoading] = useState(true)
-
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -107,10 +108,11 @@ export default function AttendancePage() {
       if (intervalRef.current) clearInterval(intervalRef.current)
       if (wsRef.current) wsRef.current.close()
     }
-  }, [isActive, toast])
+  }, [currentSessionId, isActive, toast])
 
   const connectWebSocket = () => {
-    wsRef.current = new WebSocket(`ws://localhost:8000/ws/attendance/${classId}`)
+    if (!currentSessionId) return;
+    wsRef.current = new WebSocket(`ws://localhost:8000/ws/attendance/${currentSessionId}`)
 
     wsRef.current.onopen = () => {
       toast({
@@ -188,13 +190,42 @@ export default function AttendancePage() {
     }
   }
 
-  const toggleAttendance = () => {
-    setIsActive(!isActive)
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = undefined
+
+  const toggleAttendance = async () => {
+    if (!isActive) {
+      try {
+        const response = await fetch(`http://localhost:8000/classes/${classId}/bouts`, { 
+          method: 'POST' 
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const sessionData = await response.json();
+        setCurrentSessionId(sessionData.id);
+        setStudents(prev => prev.map(s => ({ ...s, recognized: false, timestamp: undefined })));
+        setIsActive(true);
+      } catch (error) {
+        console.error('Error starting bout:', error);
+        toast({ 
+          title: 'Error', 
+          description: 'Failed to start session: ' + error.message,
+          variant: 'destructive' 
+        });
+      }
+    } else {
+      try {
+        if (currentSessionId) {
+          await fetch(`http://localhost:8000/bouts/${currentSessionId}/end`, { method: 'PATCH' });
+        }
+        setIsActive(false);
+        setCurrentSessionId(null);
+      } catch (error) {
+        toast({ title: 'Error', description: 'Failed to end session', variant: 'destructive' });
+      }
     }
-  }
+  };
 
   if (loading) {
     return (

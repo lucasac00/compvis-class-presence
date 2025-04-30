@@ -3,7 +3,7 @@ from datetime import datetime
 
 class AttendanceBase(BaseModel):
     student_id: int
-    class_id: int
+    bout_id: int
     presence: bool = False
     register_time: datetime
 

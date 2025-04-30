@@ -1,13 +1,12 @@
 "use client"
 
 import Link from "next/link"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Video } from "lucide-react"
+import { Video, Upload } from "lucide-react"
 
 interface Class {
   id: number
@@ -25,9 +24,7 @@ export default function ClassSelector() {
     const fetchClasses = async () => {
       try {
         const response = await fetch("http://localhost:8000/classes/")
-        if (!response.ok) {
-          throw new Error("Failed to fetch classes")
-        }
+        if (!response.ok) throw new Error("Failed to fetch classes")
         const data = await response.json()
         setClasses(data)
       } catch (error) {
@@ -45,7 +42,7 @@ export default function ClassSelector() {
     fetchClasses()
   }, [toast])
 
-  const handleStartAttendance = () => {
+  const handleLiveAttendance = () => {
     if (!selectedClass) {
       toast({
         title: "Error",
@@ -54,8 +51,19 @@ export default function ClassSelector() {
       })
       return
     }
-
     router.push(`/attendance/${selectedClass}`)
+  }
+
+  const handleUploadAttendance = () => {
+    if (!selectedClass) {
+      toast({
+        title: "Error",
+        description: "Please select a class first",
+        variant: "destructive",
+      })
+      return
+    }
+    router.push(`/attendance/${selectedClass}/upload`)
   }
 
   if (loading) {
@@ -91,10 +99,26 @@ export default function ClassSelector() {
         </Select>
       </div>
 
-      <Button onClick={handleStartAttendance} disabled={!selectedClass} className="w-full">
-        <Video className="mr-2 h-4 w-4" />
-        Start Attendance
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button 
+          onClick={handleLiveAttendance} 
+          disabled={!selectedClass}
+          className="w-full"
+        >
+          <Video className="mr-2 h-4 w-4" />
+          Start Live Attendance
+        </Button>
+        
+        <Button 
+          onClick={handleUploadAttendance} 
+          disabled={!selectedClass}
+          className="w-full"
+          variant="secondary"
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          Upload Pre-recorded Video
+        </Button>
+      </div>
     </div>
   )
 }

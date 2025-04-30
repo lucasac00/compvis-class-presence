@@ -56,3 +56,23 @@ class FaceProcessor:
                 recognized.append(self.known_faces[best_match][0])  # Retorna ID do aluno
         
         return recognized
+
+    def process_video(self, video_path: str, frame_interval: int = 30):
+        recognized_ids = set()
+        cap = cv2.VideoCapture(video_path)
+        frame_count = 0
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+                
+            # Process every nth frame to improve performance
+            if frame_count % frame_interval == 0:
+                frame_ids = self.process_frame(frame)
+                recognized_ids.update(frame_ids)
+                
+            frame_count += 1
+        
+        cap.release()
+        return list(recognized_ids)
