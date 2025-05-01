@@ -1,21 +1,12 @@
--- um aluno pode estar cadastrado em várias aulas
--- uma aula pode ter vários alunos
-
--- aluno to student
--- nome to name
--- aula to class
--- descricao to description
--- presente to presence
-
 CREATE TABLE IF NOT EXISTS student (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    image_path VARCHAR(255) NOT NULL -- Integrar com S3? Mecanismo de add alunos pela interface?
+    image_path VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS class (
     id SERIAL PRIMARY KEY,
-    description TEXT -- exemplo: "Aula de Python - Módulo 3"
+    description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS enrollment (
@@ -24,7 +15,6 @@ CREATE TABLE IF NOT EXISTS enrollment (
     PRIMARY KEY (student_id, class_id)
 );
 
--- Session and Period are keywords in sql :( had to make do
 CREATE TABLE IF NOT EXISTS bout (
     id SERIAL PRIMARY KEY,
     class_id INT NOT NULL REFERENCES class(id) ON DELETE CASCADE,

@@ -5,22 +5,28 @@ import numpy as np
 from .utils import remove_diacritics_and_spaces
 from typing import List, Dict
 
+# The heart and soul of the system, this class is responsible for processing video stream
+# and returning the recognized students from it.
+
 class FaceProcessor:
     def __init__(self, expected_students: List[Dict], main_folder: str = "students"):
-        self.expected_students = expected_students  # Lista de dicionários do banco
+        self.expected_students = expected_students
         self.main_folder = main_folder
         self.known_faces = self._load_known_faces()
     
+    # This represents the first two steps of facial recognition
+    # As explained in the README.md, they are Detection and Encoding
     def _load_known_faces(self):
         known_faces = []
         for student in self.expected_students:
             try:
+                # For each student, we load their image that is saved in consistent storage
                 image_path = student.get("image_path")
                 print("Checking image path:", os.path.abspath(image_path))
                 print("Exists?", os.path.exists(image_path))
                 if not image_path or not os.path.exists(image_path):
                     continue
-
+                # Recognize face boundaries, then encode them
                 image = face_recognition.load_image_file(image_path)
                 encodings = face_recognition.face_encodings(image)
 
@@ -30,33 +36,42 @@ class FaceProcessor:
                     print(f"⚠️ No face found in {student['image_path']}")
             except Exception as e:
                 print(f"Error processing image for student ID {student.get('id')}: {e}")
-        
+        # Returns list of encoded faces
         return known_faces
-
+    # For the live video processing, this processes a single frame and tries to find faces
     def process_frame(self, frame):
+        # Resize frame to 1/4 size for faster processing
+        # We could use a bigger size, it would be slower but more accurate
         small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        # Convert the image from BGR (OpenCV format) to RGB (face_recognition format)
+        # Found this solution in a random stackoverflow post, the original one is commented under it
+        # but doesn't work. Maybe worth it opening an issue?
         rgb_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
         #rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
         
+        # Find the boundaries of the faces in the frame
         face_locations = face_recognition.face_locations(rgb_frame)
         print("Processing frame...")
         print(f"Detected {len(face_locations)} faces")
         if not face_locations:
             return []
-
+        # Find the encodings of the detected faces
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
         
         recognized = []
         for encoding in face_encodings:
+            # Compare the detected face encodings with the known faces
+            # This is the final step, Face Matching
             matches = face_recognition.compare_faces([e[1] for e in self.known_faces], encoding)
             face_distances = face_recognition.face_distance([e[1] for e in self.known_faces], encoding)
             best_match = np.argmin(face_distances)
             
             if matches[best_match]:
                 recognized.append(self.known_faces[best_match][0])  # Retorna ID do aluno
-        
+        # Return a list of recognized student IDs
         return recognized
 
+    # This function processes a video file and returns the recognized student IDs
     def process_video(self, video_path: str, frame_interval: int = 30):
         recognized_ids = set()
         cap = cv2.VideoCapture(video_path)
@@ -68,6 +83,8 @@ class FaceProcessor:
                 break
                 
             # Process every nth frame to improve performance
+            # Once again, could be removed for a more accurate result
+            # but would impact performance
             if frame_count % frame_interval == 0:
                 frame_ids = self.process_frame(frame)
                 recognized_ids.update(frame_ids)

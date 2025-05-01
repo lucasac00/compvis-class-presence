@@ -159,11 +159,11 @@ export default function ClassAttendancePage() {
                     <TableCell>{record.student_id}</TableCell>
                     <TableCell>
                       {record.bout?.start_time 
-                        ? format(new Date(record.bout.start_time), "PPpp")
+                        ? format(new Date(record.bout.start_time).toLocaleString(), "PPpp")
                         : "Unknown bout"}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(record.register_time), "PPpp")}
+                      {format(new Date(record.register_time).toLocaleString(), "PPpp")}
                     </TableCell>
                     <TableCell>
                       {record.presence ? (

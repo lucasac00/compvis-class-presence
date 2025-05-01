@@ -80,7 +80,7 @@ export default function UploadAttendancePage() {
     try {
       const formData = new FormData()
       formData.append("video_file", selectedFile)
-
+      console.log("Uploading video file:", selectedFile.name)
       const response = await fetch(
         `http://localhost:8000/bouts/${currentSessionId}/process-video`,
         {
@@ -119,7 +119,7 @@ export default function UploadAttendancePage() {
       setIsProcessing(false)
     }
   }
-
+  // Start a new bout session
   const startBoutSession = async () => {
     try {
       const response = await fetch(`http://localhost:8000/classes/${classId}/bouts`, {

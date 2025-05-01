@@ -201,3 +201,6 @@ next-env.d.ts
 
 # Zone.Identifier
 **/*.Identifier
+
+# Student images
+/backend/students/*

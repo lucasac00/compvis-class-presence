@@ -1,3 +1,6 @@
+## This is the example code for the face recognition attendance system, shown in the face_recognition repository
+## The system was built around this example, first integrating it into a database, and then building the FastAPI backend and next frontend around that.
+
 import face_recognition
 import cv2
 import numpy as np

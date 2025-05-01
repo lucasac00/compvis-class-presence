@@ -1,5 +1,7 @@
 ## COMPUTER VISION CLASS PRESENCE
 
+Possible improvements: take photo directly when creating student, pull student names in classes screen
+
 ## 📖 Introduction
 A web-based attendance tracking system that uses facial recognition to automatically mark student presences. Features two modes:
 - **Live Video Attendance**: Real-time face detection via webcam

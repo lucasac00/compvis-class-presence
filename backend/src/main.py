@@ -13,24 +13,19 @@ from PIL import Image
 import io
 from tempfile import NamedTemporaryFile
 import tempfile
-
-# Importe modelos e serviços
 from database.database import Base, SessionLocal, engine
-# Importe cada modelo individualmente
 from models.student import Student
 from models.class_ import Class
 from models.enrollment import Enrollment
 from models.attendance import Attendance
 from models.bout import Bout
 from face_service.processor import FaceProcessor
-
-# Importe schemas
 from schemas.student import StudentCreate, StudentRead
 from schemas.class_ import ClassCreate, ClassRead
 from schemas.enrollment import EnrollmentCreate
 from schemas.attendance import AttendanceRead
 from schemas.bout import BoutCreate, BoutRead
-
+# Initialize the FastAPI app
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -39,7 +34,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     engine.dispose()
 
-# Configuração do FastAPI
 app = FastAPI(title="Marrow Attendance System", lifespan=lifespan)
 
 app.mount("/static/students", StaticFiles(directory="students"), name="students")
@@ -60,17 +54,17 @@ def get_db():
     finally:
         db.close()
 
-# Rotas principais
+# Main route to check if system is running
 @app.get("/")
 async def root():
     return {"message": "Marrow Attendance System API"}
 
-# WebSocket para processamento de vídeo em tempo real
+# WebSocket for real time video processing. The video stream is sent from the frontend, a frame at a time.
 @app.websocket("/ws/attendance/{bout_id}")
 async def video_feed(websocket: WebSocket, bout_id: int, db: Session = Depends(get_db)):
     await websocket.accept()
     try:
-        # Carrega alunos matriculados na aula
+        # CGet students enrolled in the class
         session = db.query(Bout).filter(Bout.id == bout_id).first()
         if not session:
             await websocket.send_json({"error": "Bout not found"})
@@ -86,7 +80,7 @@ async def video_feed(websocket: WebSocket, bout_id: int, db: Session = Depends(g
             Enrollment.class_id == class_id
         ).all()
 
-        # Inicializa o processador facial
+        # Initialize the FaceProcessor class
         print("Initializing FaceProcessor...")
         processor = FaceProcessor(
             expected_students=[
@@ -99,7 +93,7 @@ async def video_feed(websocket: WebSocket, bout_id: int, db: Session = Depends(g
         )
         print("FaceProcessor initialized with students:", students)
         while True:
-            # Recebe frame do frontend
+            # Receive frame
             print("Starting to receive frame...")
             data = await websocket.receive_bytes()
             if not data:
@@ -112,10 +106,10 @@ async def video_feed(websocket: WebSocket, bout_id: int, db: Session = Depends(g
                 print("⚠️ Failed to decode frame")
                 continue
             
-            # Processa frame
+            # Process frame to find faces (returns IDs of recognized students)
             recognized_ids = processor.process_frame(frame)
             
-            # Atualiza presenças
+            # Update attendance reords
             for student_id in recognized_ids:
                 attendance = Attendance(
                     student_id=student_id,
@@ -127,7 +121,6 @@ async def video_feed(websocket: WebSocket, bout_id: int, db: Session = Depends(g
             
             db.commit()
             
-            # Retorna resposta
             await websocket.send_json({
                 "recognized": recognized_ids,
                 "timestamp": datetime.now().isoformat()
@@ -142,6 +135,7 @@ async def process_video_attendance(
     video_file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
+    print("Processing video for attendance...")
     try:
         # Validate bout exists and is active
         bout = db.query(Bout).filter(Bout.id == bout_id).first()
@@ -149,36 +143,34 @@ async def process_video_attendance(
             raise HTTPException(status_code=404, detail="Bout not found")
         if bout.end_time is not None:
             raise HTTPException(status_code=400, detail="Bout has already ended")
-
+        print("Bout found, class ID:", bout.class_id)
         # Get enrolled students
         students = db.query(Student).join(Enrollment).filter(
             Enrollment.class_id == bout.class_id
         ).all()
-
+        print("initializing FaceProcessor with students:", students)
         # Initialize face processor
         processor = FaceProcessor([
             {"id": s.id, "name": s.name, "image_path": s.image_path} 
             for s in students
         ])
-
+        print("FaceProcessor initialized")
         # Save video to temporary file
-        with NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-            content = await video_file.read()
-            temp_video.write(content)
-            temp_path = temp_video.name
-
         # Process video frames
         recognized_ids = set()
         with NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
             content = await video_file.read()
             temp_video.write(content)
             temp_path = temp_video.name
-
+        print("Temporary video file created:", temp_path)
+        print("Processing video...")
         recognized_ids = set(processor.process_video(temp_path))
+        print("Video processed, recognized IDs:", recognized_ids)
         os.unlink(temp_path)  # Cleanup
 
         # Create attendance records
         timestamp = datetime.now()
+        print("Creating attendance records...")
         for student_id in recognized_ids:
             attendance = Attendance(
                 student_id=student_id,
@@ -201,7 +193,7 @@ async def process_video_attendance(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# CRUD para Alunos
+# POST create new student
 @app.post("/students/", response_model=StudentRead)
 async def create_student(name: str = Form(...), image: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs("students", exist_ok=True)
@@ -219,6 +211,7 @@ async def create_student(name: str = Form(...), image: UploadFile = File(...), d
     
     return student
 
+# GET all students
 @app.get("/students/", response_model=List[StudentRead])
 async def get_students():
     db = SessionLocal()
@@ -226,6 +219,7 @@ async def get_students():
     db.close()
     return students
 
+# GET all classes
 @app.get("/classes/", response_model=List[ClassRead])
 async def get_classes():
     db = SessionLocal()
@@ -233,6 +227,7 @@ async def get_classes():
     db.close()
     return classes
 
+# GET class by ID
 @app.get("/classes/{class_id}", response_model=ClassRead)
 async def get_class(class_id: int, db: Session = Depends(get_db)):
     current_class = db.query(Class).filter(Class.id == class_id).first()
@@ -240,6 +235,7 @@ async def get_class(class_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Class not found")
     return current_class
 
+# GET students by class ID
 @app.get("/classes/{class_id}/students", response_model=List[StudentRead])
 async def get_students_by_class(class_id: int, db: Session = Depends(get_db)):
     students = db.query(Student).join(Enrollment).filter(
@@ -249,6 +245,7 @@ async def get_students_by_class(class_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No students found for this class")
     return students
 
+# POST new class session (bout)
 @app.post("/classes/{class_id}/bouts", response_model=BoutRead)
 async def create_bout(class_id: int, db: Session = Depends(get_db)):
     try:
@@ -262,6 +259,7 @@ async def create_bout(class_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+# PATCH to end a session (bout) by adding end time
 @app.patch("/bouts/{bout_id}/end")
 async def end_session(bout_id: int, db: Session = Depends(get_db)):
     bout = db.query(Bout).filter(Bout.id == bout_id).first()
@@ -271,6 +269,7 @@ async def end_session(bout_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Bout ended successfully"}
 
+# GET all attendance records for a specific session (bout)
 @app.get("/bouts/{bout_id}/attendance", response_model=List[AttendanceRead])
 async def get_bout_attendance(bout_id: int, db: Session = Depends(get_db)):
     try:
@@ -279,11 +278,13 @@ async def get_bout_attendance(bout_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# GET all bouts for a specific class
 @app.get("/classes/{class_id}/bouts", response_model=List[BoutRead])
 async def get_class_bouts(class_id: int, db: Session = Depends(get_db)):
     bouts = db.query(Bout).filter(Bout.class_id == class_id).all()
     return bouts
 
+# DELETE student by ID
 @app.delete("/students/{student_id}", status_code=204)
 async def delete_student(student_id: int = Path(...), db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.id == student_id).first()
@@ -298,7 +299,7 @@ async def delete_student(student_id: int = Path(...), db: Session = Depends(get_
     db.commit()
     return
 
-# CRUD para Aulas
+# POST new class
 @app.post("/classes/", response_model=ClassRead)
 async def create_class(description: str = Form(...), db: Session = Depends(get_db)):
     new_class = Class(
@@ -308,6 +309,8 @@ async def create_class(description: str = Form(...), db: Session = Depends(get_d
     db.commit()
     db.refresh(new_class)
     return new_class
+
+# Old endpoint to get attendance by class ID, before sessions (bouts) were added
 
 # @app.get("/classes/{class_id}/attendance", response_model=List[AttendanceRead])
 # async def get_attendance(class_id: int):
@@ -320,20 +323,17 @@ async def create_class(description: str = Form(...), db: Session = Depends(get_d
 #     finally:
 #         db.close()
 
-# CRUD para Matrículas (Enrollments)
+# POST new enrollment
 @app.post("/enrollments/")
 async def enroll_student(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
-    # Verifica se o aluno existe
     student = db.query(Student).filter(Student.id == enrollment.student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     
-    # Verifica se a aula existe
     current_class = db.query(Class).filter(Class.id == enrollment.class_id).first()
     if not current_class:
         raise HTTPException(status_code=404, detail="Class not found")
     
-    # Verifica se já existe matrícula
     existing_enrollment = db.query(Enrollment).filter(
         Enrollment.student_id == enrollment.student_id,
         Enrollment.class_id == enrollment.class_id
@@ -341,7 +341,6 @@ async def enroll_student(enrollment: EnrollmentCreate, db: Session = Depends(get
     if existing_enrollment:
         raise HTTPException(status_code=400, detail="Student already enrolled in this class")
     
-    # Cria a matrícula
     new_enrollment = Enrollment(
         student_id=enrollment.student_id,
         class_id=enrollment.class_id
