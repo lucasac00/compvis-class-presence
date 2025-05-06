@@ -40,6 +40,7 @@ export default function ClassAttendancePage() {
 
   const [classInfo, setClassInfo] = useState<ClassInfo | null>(null)
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([])
+  const [bouts, setBouts] = useState<Bout[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function ClassAttendancePage() {
         const boutsResponse = await fetch(`${api}/classes/${classId}/bouts`)
         if (!boutsResponse.ok) throw new Error("Failed to fetch bouts")
         const boutsData: Bout[] = await boutsResponse.json()
+        
 
         // Fetch attendances for each bout
         const attendancesPromises = boutsData.map(async (bout) => {
@@ -66,7 +68,11 @@ export default function ClassAttendancePage() {
 
         const attendancesArrays = await Promise.all(attendancesPromises)
         setAttendanceRecords(attendancesArrays.flat())
-        
+
+        const sortedBouts = boutsData.sort((a, b) => 
+          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        )
+        setBouts(sortedBouts)
       } catch (error) {
         console.error("Error fetching data:", error)
         toast({
@@ -141,50 +147,67 @@ export default function ClassAttendancePage() {
             {classInfo?.description}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {attendanceRecords.length === 0 ? (
+        <CardContent className="space-y-8">
+          {bouts.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No attendance records found for this class</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Student Name</TableHead>
-                  <TableHead>Session Start</TableHead>
-                  <TableHead>Register Time</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attendanceRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.student_id}</TableCell>
-                    <TableCell>{record.student_name}</TableCell>
-                    <TableCell>
-                      {record.bout?.start_time 
-                        ? format(new Date(record.bout.start_time).toLocaleString(), "PPpp")
-                        : "Unknown bout"}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(record.register_time).toLocaleString(), "PPpp")}
-                    </TableCell>
-                    <TableCell>
-                      {record.presence ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Present
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Absent
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            bouts.map(bout => (
+              <div key={bout.id} className="space-y-4">
+                <div className="border-b pb-2">
+                  <h3 className="text-lg font-semibold">
+                    Session: {format(new Date(bout.start_time), "PPpp")}
+                  </h3>
+                  {bout.end_time && (
+                    <p className="text-sm text-muted-foreground">
+                      Ended: {format(new Date(bout.end_time), "PPpp")}
+                    </p>
+                  )}
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Register Time</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attendanceRecords.filter(record => record.bout_id === bout.id).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                          No attendance records for this session
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      attendanceRecords.filter(record => record.bout_id === bout.id).map(record => (
+                        <TableRow key={record.id}>
+                          <TableCell>{record.student_id}</TableCell>
+                          <TableCell>{record.student_name}</TableCell>
+                          <TableCell>
+                            {format(new Date(record.register_time), "PPpp")}
+                          </TableCell>
+                          <TableCell>
+                            {record.presence ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Present
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Absent
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

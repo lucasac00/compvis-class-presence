@@ -249,7 +249,7 @@ export default function AttendancePage() {
 
   const handleVideoCanPlay = () => {
     if (isActive && !intervalRef.current) {
-      intervalRef.current = setInterval(captureAndSendFrame, 1000)
+      intervalRef.current = setInterval(captureAndSendFrame, 500)
     }
   }
 

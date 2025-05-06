@@ -39,13 +39,11 @@ class FaceProcessor:
         return known_faces
     # For the live video processing, this processes a single frame and tries to find faces
     def process_frame(self, frame):
-        small_frame = cv2.resize(frame, (0, 0), fx=1, fy=1)
+        small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         rgb_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
         
         # Find the boundaries of the faces in the frame
-        face_locations = face_recognition.face_locations(rgb_frame)
-        # print("Processing frame...")
-        # print(f"Detected {len(face_locations)} faces")
+        face_locations = face_recognition.face_locations(rgb_frame)    
         if not face_locations:
             return [], 0, [], []
         total_faces = len(face_locations)
