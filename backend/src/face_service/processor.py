@@ -39,7 +39,6 @@ class FaceProcessor:
         return known_faces
     # For the live video processing, this processes a single frame and tries to find faces
     def process_frame(self, frame):
-        # Resize frame to 1/4 size for faster processing
         small_frame = cv2.resize(frame, (0, 0), fx=1, fy=1)
         rgb_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
         
@@ -48,7 +47,8 @@ class FaceProcessor:
         print("Processing frame...")
         print(f"Detected {len(face_locations)} faces")
         if not face_locations:
-            return []
+            return [], 0
+        total_faces = len(face_locations)
         # Find the encodings of the detected faces
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
         
@@ -63,7 +63,7 @@ class FaceProcessor:
             if matches[best_match]:
                 recognized.append(self.known_faces[best_match][0])
         # Return a list of recognized student IDs
-        return recognized
+        return recognized, total_faces
 
     # This function processes a video file and returns the recognized student IDs
     def process_video(self, video_path: str, frame_interval: int = 30):
@@ -78,7 +78,7 @@ class FaceProcessor:
                 
             # Process every nth frame to improve performance
             if frame_count % frame_interval == 0:
-                frame_ids = self.process_frame(frame)
+                frame_ids, _ = self.process_frame(frame)
                 recognized_ids.update(frame_ids)
                 
             frame_count += 1

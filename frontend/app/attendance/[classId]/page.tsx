@@ -33,6 +33,7 @@ export default function AttendancePage() {
   const [isActive, setIsActive] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [faceCounts, setFaceCounts] = useState({ total: 0, recognized: 0, unrecognized: 0 });
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -108,7 +109,9 @@ export default function AttendancePage() {
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
-      if (wsRef.current) wsRef.current.close()
+      if (wsRef.current) {
+        wsRef.current.close(1000)
+      }
     }
   }, [currentSessionId, isActive, toast])
 
@@ -152,6 +155,14 @@ export default function AttendancePage() {
           }
         })
       }
+
+      const total = data.total_faces || 0;
+      const recognized = data.recognized?.length || 0;
+      setFaceCounts({
+        total: total,
+        recognized: recognized,
+        unrecognized: total - recognized
+      });
     }
 
     wsRef.current.onerror = (error) => {
@@ -188,7 +199,7 @@ export default function AttendancePage() {
 
   const handleVideoCanPlay = () => {
     if (isActive && !intervalRef.current) {
-      intervalRef.current = setInterval(captureAndSendFrame, 1000)
+      intervalRef.current = setInterval(captureAndSendFrame, 500)
     }
   }
 
@@ -284,11 +295,24 @@ export default function AttendancePage() {
               <canvas ref={canvasRef} className="hidden" />
 
               {isActive && (
-                <div className="absolute top-2 right-2">
-                  <Badge variant="destructive" className="animate-pulse">
-                    Recording
-                  </Badge>
-                </div>
+                <>
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="destructive" className="animate-pulse">
+                      Recording
+                    </Badge>
+                  </div>
+                  <div className="absolute top-2 left-2 flex gap-2">
+                    <Badge variant="outline" className="bg-background">
+                      Faces: {faceCounts.total}
+                    </Badge>
+                    <Badge variant="outline" className="bg-background">
+                      Recognized: {faceCounts.recognized}
+                    </Badge>
+                    <Badge variant="outline" className="bg-background">
+                      Unrecognized: {faceCounts.unrecognized}
+                    </Badge>
+                  </div>
+                </>
               )}
             </div>
           </CardContent>

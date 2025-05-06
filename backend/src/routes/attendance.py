@@ -39,38 +39,47 @@ async def video_feed(websocket: WebSocket, bout_id: int):
             ],
         )
         while True:
-            data = await websocket.receive_bytes()
-            frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-            if frame is None:
-                continue
-            recognized_ids = processor.process_frame(frame)
-            new_attendances = []
-            for student_id in recognized_ids:
-                existing = db.query(Attendance).filter(
-                    Attendance.student_id == student_id,
-                    Attendance.bout_id == bout_id
-                ).first()
-                
-                if not existing:
-                    new_attendance = Attendance(
-                        student_id=student_id,
-                        bout_id=bout_id,
-                        register_time=datetime.now(),
-                        presence=True
-                    )
-                    new_attendances.append(new_attendance)
-            if new_attendances:
-                db.bulk_save_objects(new_attendances)
+            try:
+                data = await websocket.receive_bytes()
+                frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+                if frame is None:
+                    continue
+                recognized_ids, total_faces = processor.process_frame(frame)
+                new_attendances = []
+                for student_id in recognized_ids:
+                    existing = db.query(Attendance).filter(
+                        Attendance.student_id == student_id,
+                        Attendance.bout_id == bout_id
+                    ).first()
+                    
+                    if not existing:
+                        new_attendance = Attendance(
+                            student_id=student_id,
+                            bout_id=bout_id,
+                            register_time=datetime.now(),
+                            presence=True
+                        )
+                        new_attendances.append(new_attendance)
+                if new_attendances:
+                    db.bulk_save_objects(new_attendances)
+                    db.commit()
                 db.commit()
-            db.commit()
-            await websocket.send_json({
-                "recognized": recognized_ids,
-                "timestamp": datetime.now().isoformat()
-            })
+                await websocket.send_json({
+                    "recognized": recognized_ids,
+                    "total_faces": total_faces,
+                    "timestamp": datetime.now().isoformat()
+                })
+            except WebSocketDisconnect:
+                print("WebSocket disconnected")
+                break
+            except RuntimeError as e:
+                print(f"Client disconnected: {str(e)}")
+                raise
     except Exception as e:
         print(f"WebSocket Error: {str(e)}")
     finally:
         db.close()
+        await websocket.close(code=1000)
 
 @router.post("/bouts/{bout_id}/process-video")
 async def process_video_attendance(
