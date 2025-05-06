@@ -21,6 +21,7 @@ interface Student {
 }
 
 export default function NewClassPage() {
+  const api = process.env.API_BASE_URL
   const [description, setDescription] = useState("")
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
@@ -33,7 +34,7 @@ export default function NewClassPage() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch("http://localhost:8000/students/")
+        const response = await fetch(`${api}/students/`)
         if (!response.ok) {
           throw new Error("Failed to fetch students")
         }
@@ -79,7 +80,7 @@ export default function NewClassPage() {
 
     try {
       // First create the class
-      const classResponse = await fetch("http://localhost:8000/classes/", {
+      const classResponse = await fetch(`${api}/classes/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -96,7 +97,7 @@ export default function NewClassPage() {
 
       // Then enroll the selected students
       const enrollmentPromises = selectedStudents.map(async (studentId) => {
-        const enrollResponse = await fetch("http://localhost:8000/enrollments/", {
+        const enrollResponse = await fetch(`${api}/enrollments/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

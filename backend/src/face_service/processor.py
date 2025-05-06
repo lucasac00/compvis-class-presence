@@ -2,10 +2,9 @@ import os
 import face_recognition
 import cv2
 import numpy as np
-from .utils import remove_diacritics_and_spaces
 from typing import List, Dict
 
-# The heart and soul of the system, this class is responsible for processing video stream
+# The heart of the system, this class is responsible for processing video stream
 # and returning the recognized students from it.
 
 class FaceProcessor:
@@ -41,13 +40,8 @@ class FaceProcessor:
     # For the live video processing, this processes a single frame and tries to find faces
     def process_frame(self, frame):
         # Resize frame to 1/4 size for faster processing
-        # We could use a bigger size, it would be slower but more accurate
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        # Convert the image from BGR (OpenCV format) to RGB (face_recognition format)
-        # Found this solution in a random stackoverflow post, the original one is commented under it
-        # but doesn't work. Maybe worth it opening an issue?
+        small_frame = cv2.resize(frame, (0, 0), fx=1, fy=1)
         rgb_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
-        #rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
         
         # Find the boundaries of the faces in the frame
         face_locations = face_recognition.face_locations(rgb_frame)
@@ -67,7 +61,7 @@ class FaceProcessor:
             best_match = np.argmin(face_distances)
             
             if matches[best_match]:
-                recognized.append(self.known_faces[best_match][0])  # Retorna ID do aluno
+                recognized.append(self.known_faces[best_match][0])
         # Return a list of recognized student IDs
         return recognized
 
@@ -83,8 +77,6 @@ class FaceProcessor:
                 break
                 
             # Process every nth frame to improve performance
-            # Once again, could be removed for a more accurate result
-            # but would impact performance
             if frame_count % frame_interval == 0:
                 frame_ids = self.process_frame(frame)
                 recognized_ids.update(frame_ids)

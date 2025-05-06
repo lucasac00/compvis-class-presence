@@ -58,6 +58,9 @@ Bouts (id, class_id, start_time, end_time)
 Attendance (id, student_id, bout_id, presence, register_time)
 ```
 
+## Using Adminer To Manage Database
+In the docker-compose.yml is a fourth service (beyond frontend, backend and database). That service is adminer, a database management system built to be deployed with docker. In the docker-compose.yml file, it is set to automatically connect to the deployed database. Adminer can be accessed through the 8080 port (localhost:8080). You'll be prompted with entering the username, password and database, which are defined in the docker-compose.yml. In our case, they are "marrow", "marrow123" and "marrow_db", respectively.
+
 ## 🛠️ Technologies Used
 Backend
 - Framework: FastAPI

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Camera, Upload } from "lucide-react"
 
 export default function NewStudentPage() {
+  const api = process.env.API_BASE_URL
   const [name, setName] = useState("")
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -55,7 +56,7 @@ export default function NewStudentPage() {
       formData.append("name", name)
       formData.append("image", image)
 
-      const response = await fetch("http://localhost:8000/students/", {
+      const response = await fetch(`${api}/students/`, {
         method: "POST",
         body: formData,
       })

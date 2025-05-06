@@ -12,6 +12,7 @@ import { format } from "date-fns"
 interface Attendance {
   id: number
   student_id: number
+  student_name: string
   bout_id: number
   register_time: string
   presence: boolean
@@ -31,6 +32,7 @@ interface ClassInfo {
 }
 
 export default function ClassAttendancePage() {
+  const api = process.env.API_BASE_URL
   const params = useParams()
   const classId = params.classId as string
   const router = useRouter()
@@ -44,19 +46,19 @@ export default function ClassAttendancePage() {
     const fetchData = async () => {
       try {
         // Fetch class details
-        const classResponse = await fetch(`http://localhost:8000/classes/${classId}`)
+        const classResponse = await fetch(`${api}/classes/${classId}`)
         if (!classResponse.ok) throw new Error("Failed to fetch class information")
         const classData = await classResponse.json()
         setClassInfo(classData)
 
         // Fetch bouts for the class
-        const boutsResponse = await fetch(`http://localhost:8000/classes/${classId}/bouts`)
+        const boutsResponse = await fetch(`${api}/classes/${classId}/bouts`)
         if (!boutsResponse.ok) throw new Error("Failed to fetch bouts")
         const boutsData: Bout[] = await boutsResponse.json()
 
         // Fetch attendances for each bout
         const attendancesPromises = boutsData.map(async (bout) => {
-          const response = await fetch(`http://localhost:8000/bouts/${bout.id}/attendance`)
+          const response = await fetch(`${api}/bouts/${bout.id}/attendance`)
           if (!response.ok) return []
           const attendances: Attendance[] = await response.json()
           return attendances.map(a => ({ ...a, bout }))
@@ -83,9 +85,10 @@ export default function ClassAttendancePage() {
   const exportToCSV = () => {
     if (!attendanceRecords.length || !classInfo) return
 
-    const headers = ["Student ID", "Session Start", "Register Time", "Presence"]
+    const headers = ["Student ID", "Student Name", "Session Start", "Register Time", "Presence"]
     const rows = attendanceRecords.map((record) => [
       record.student_id,
+      record.student_name,
       record.bout?.start_time ? format(new Date(record.bout.start_time), "PPpp") : "Unknown",
       record.register_time,
       record.presence ? "Yes" : "No",
@@ -148,6 +151,7 @@ export default function ClassAttendancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Student ID</TableHead>
+                  <TableHead>Student Name</TableHead>
                   <TableHead>Session Start</TableHead>
                   <TableHead>Register Time</TableHead>
                   <TableHead>Status</TableHead>
@@ -157,6 +161,7 @@ export default function ClassAttendancePage() {
                 {attendanceRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>{record.student_id}</TableCell>
+                    <TableCell>{record.student_name}</TableCell>
                     <TableCell>
                       {record.bout?.start_time 
                         ? format(new Date(record.bout.start_time).toLocaleString(), "PPpp")

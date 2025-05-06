@@ -48,17 +48,6 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# # Copy application code
-# COPY . .
-
-# RUN mkdir -p /app/students
-# VOLUME /app/students
-
-# # Database initialization (if needed)
-# # RUN python -c "from database.database import Base, engine; Base.metadata.create_all(bind=engine)"
-
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
 # Copy application code with proper path handling
 COPY . /app/
 

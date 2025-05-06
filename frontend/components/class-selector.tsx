@@ -14,6 +14,7 @@ interface Class {
 }
 
 export default function ClassSelector() {
+  const api = process.env.API_BASE_URL
   const [classes, setClasses] = useState<Class[]>([])
   const [selectedClass, setSelectedClass] = useState<string>("")
   const [loading, setLoading] = useState(true)
@@ -23,7 +24,7 @@ export default function ClassSelector() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const response = await fetch("http://localhost:8000/classes/")
+        const response = await fetch(`${api}/classes/`)
         if (!response.ok) throw new Error("Failed to fetch classes")
         const data = await response.json()
         setClasses(data)

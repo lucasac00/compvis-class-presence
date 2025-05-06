@@ -10,8 +10,12 @@ class AttendanceBase(BaseModel):
 class AttendanceCreate(AttendanceBase):
     pass
 
-class AttendanceRead(AttendanceBase):
-    id: int
+class AttendanceRead(BaseModel):
+    student_id: int
+    student_name: str
+    bout_id: int
+    register_time: datetime
+    presence: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True

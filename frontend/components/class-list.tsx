@@ -16,6 +16,7 @@ interface Class {
 }
 
 export default function ClassList() {
+  const api = process.env.API_BASE_URL
   const [classes, setClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -24,7 +25,7 @@ export default function ClassList() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const response = await fetch("http://localhost:8000/classes/")
+        const response = await fetch(`${api}/classes/`)
         if (!response.ok) {
           throw new Error("Failed to fetch classes")
         }
@@ -34,7 +35,7 @@ export default function ClassList() {
         const classesWithCounts = await Promise.all(
           data.map(async (classItem: Class) => {
             try {
-              const enrollmentResponse = await fetch(`http://localhost:8000/classes/${classItem.id}/students`)
+              const enrollmentResponse = await fetch(`${api}/classes/${classItem.id}/students`)
               if (enrollmentResponse.ok) {
                 const students = await enrollmentResponse.json()
                 return {

@@ -21,6 +21,8 @@ interface RecognizedStudent extends Student {
 }
 
 export default function AttendancePage() {
+  const api = process.env.API_BASE_URL;
+  const wsUrl = process.env.WS_BASE_URL;
   const params = useParams()
   const classId = params.classId as string
   const router = useRouter()
@@ -41,12 +43,12 @@ export default function AttendancePage() {
   useEffect(() => {
     const fetchClassInfo = async () => {
       try {
-        const classResponse = await fetch(`http://localhost:8000/classes/${classId}`)
+        const classResponse = await fetch(`${api}/classes/${classId}`)
         if (!classResponse.ok) throw new Error("Failed to fetch class information")
         const classData = await classResponse.json()
         setClassInfo(classData)
 
-        const studentsResponse = await fetch(`http://localhost:8000/classes/${classId}/students`)
+        const studentsResponse = await fetch(`${api}/classes/${classId}/students`)
         if (!studentsResponse.ok) throw new Error("Failed to fetch enrolled students")
         const studentsData = await studentsResponse.json()
 
@@ -112,7 +114,7 @@ export default function AttendancePage() {
 
   const connectWebSocket = () => {
     if (!currentSessionId) return;
-    wsRef.current = new WebSocket(`ws://localhost:8000/ws/attendance/${currentSessionId}`)
+    wsRef.current = new WebSocket(`${wsUrl}/ws/attendance/${currentSessionId}`)
 
     wsRef.current.onopen = () => {
       toast({
@@ -194,7 +196,7 @@ export default function AttendancePage() {
   const toggleAttendance = async () => {
     if (!isActive) {
       try {
-        const response = await fetch(`http://localhost:8000/classes/${classId}/bouts`, { 
+        const response = await fetch(`${api}/classes/${classId}/bouts`, { 
           method: 'POST' 
         });
         
@@ -217,7 +219,7 @@ export default function AttendancePage() {
     } else {
       try {
         if (currentSessionId) {
-          await fetch(`http://localhost:8000/bouts/${currentSessionId}/end`, { method: 'PATCH' });
+          await fetch(`${api}/bouts/${currentSessionId}/end`, { method: 'PATCH' });
         }
         setIsActive(false);
         setCurrentSessionId(null);
@@ -314,7 +316,7 @@ export default function AttendancePage() {
                   >
                     <div className="flex items-center space-x-3">
                       <Avatar>
-                        <AvatarImage src={`http://localhost:8000/static/${student.image_path}`} alt={student.name} />
+                        <AvatarImage src={`${api}/static/${student.image_path}`} alt={student.name} />
                         <AvatarFallback>{student.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div>

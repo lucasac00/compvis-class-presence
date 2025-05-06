@@ -2,15 +2,16 @@ fastapi>=0.68.0
 uvicorn[standard]>=0.15.0
 python-multipart>=0.0.5
 sqlalchemy>=1.4.0
-psycopg2-binary>=2.9.1  # Critical for PostgreSQL
+psycopg2-binary>=2.9.1
 numpy==1.26.3
 opencv-python==4.9.0.80
 face-recognition>=1.3.0
 face-recognition-models>=0.3.0
 pillow>=8.0.0
-python-jose[cryptography]>=3.3.0  # For any JWT operations
+python-jose[cryptography]>=3.3.0
 httpx>=0.13.0
 pydantic>=2.0.0
 uvloop>=0.16.0
-jinja2>=3.0.0  # For template rendering
-aiofiles>=22.0.0  # For async file handling
+jinja2>=3.0.0
+aiofiles>=22.0.0
+python-dotenv>=1.0.0 

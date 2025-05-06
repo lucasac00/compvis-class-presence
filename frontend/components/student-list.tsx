@@ -14,6 +14,7 @@ interface Student {
 }
 
 export default function StudentList() {
+  const api = process.env.API_BASE_URL
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -21,7 +22,7 @@ export default function StudentList() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch("http://localhost:8000/students/")
+        const response = await fetch(`${api}/students/`)
         if (!response.ok) {
           throw new Error("Failed to fetch students")
         }
@@ -44,7 +45,7 @@ export default function StudentList() {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/students/${id}`, {
+      const response = await fetch(`${api}/students/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) {
@@ -92,7 +93,7 @@ export default function StudentList() {
           <TableRow key={student.id}>
             <TableCell>
               <Avatar>
-                <AvatarImage src={`http://localhost:8000/static/${student.image_path}`} alt={student.name} />
+                <AvatarImage src={`${api}/static/${student.image_path}`} alt={student.name} />
                 <AvatarFallback>{student.name.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             </TableCell>
