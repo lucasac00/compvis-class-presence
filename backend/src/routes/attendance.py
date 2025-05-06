@@ -81,7 +81,6 @@ async def video_feed(websocket: WebSocket, bout_id: int):
         print(f"WebSocket Error: {str(e)}")
     finally:
         db.close()
-        await websocket.close(code=1000)
 
 @router.post("/bouts/{bout_id}/process-video")
 async def process_video_attendance(
