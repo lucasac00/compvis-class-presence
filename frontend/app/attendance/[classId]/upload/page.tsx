@@ -21,7 +21,7 @@ interface RecognizedStudent extends Student {
 }
 
 export default function UploadAttendancePage() {
-  const api = process.env.API_BASE_URL;
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL;
   const params = useParams()
   const classId = params.classId as string
   const router = useRouter()
@@ -38,12 +38,12 @@ export default function UploadAttendancePage() {
   useEffect(() => {
     const fetchClassInfo = async () => {
       try {
-        const classResponse = await `${api}/classes/${classId}`)
+        const classResponse = await fetch(`${api}/classes/${classId}`)
         if (!classResponse.ok) throw new Error("Failed to fetch class information")
         const classData = await classResponse.json()
         setClassInfo(classData)
 
-        const studentsResponse = await `${api}/classes/${classId}/students`)
+        const studentsResponse = await fetch(`${api}/classes/${classId}/students`)
         if (!studentsResponse.ok) throw new Error("Failed to fetch enrolled students")
         const studentsData = await studentsResponse.json()
 
@@ -82,7 +82,7 @@ export default function UploadAttendancePage() {
       const formData = new FormData()
       formData.append("video_file", selectedFile)
       console.log("Uploading video file:", selectedFile.name)
-      const response = await 
+      const response = await fetch(
         `${api}/bouts/${currentSessionId}/process-video`,
         {
           method: "POST",
@@ -123,7 +123,7 @@ export default function UploadAttendancePage() {
   // Start a new bout session
   const startBoutSession = async () => {
     try {
-      const response = await `${api}/classes/${classId}/bouts`, {
+      const response = await fetch(`${api}/classes/${classId}/bouts`, {
         method: "POST"
       })
       

@@ -16,7 +16,7 @@ interface Class {
 }
 
 export default function ClassList() {
-  const api = process.env.API_BASE_URL
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL
   const [classes, setClasses] = useState<Class[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()

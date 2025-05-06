@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from database.database import SessionLocal
 from models.bout import Bout
 from models.attendance import Attendance
+from models.student import Student
+from models.enrollment import Enrollment
+from models.class_ import Class
 from face_service.processor import FaceProcessor
 from datetime import datetime
 import cv2

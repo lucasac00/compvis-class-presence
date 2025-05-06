@@ -32,7 +32,7 @@ interface ClassInfo {
 }
 
 export default function ClassAttendancePage() {
-  const api = process.env.API_BASE_URL
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL
   const params = useParams()
   const classId = params.classId as string
   const router = useRouter()

@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Camera, Upload } from "lucide-react"
 
 export default function NewStudentPage() {
-  const api = process.env.API_BASE_URL
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL
   const [name, setName] = useState("")
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)

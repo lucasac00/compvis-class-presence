@@ -21,8 +21,8 @@ interface RecognizedStudent extends Student {
 }
 
 export default function AttendancePage() {
-  const api = process.env.API_BASE_URL;
-  const wsUrl = process.env.WS_BASE_URL;
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const wsUrl = process.env.NEXT_PUBLIC_WS_BASE_URL;
   const params = useParams()
   const classId = params.classId as string
   const router = useRouter()

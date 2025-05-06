@@ -14,13 +14,15 @@ interface Student {
 }
 
 export default function StudentList() {
-  const api = process.env.API_BASE_URL
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
     const fetchStudents = async () => {
+      console.log(api)
+      console.log(`${api}/students/`)
       try {
         const response = await fetch(`${api}/students/`)
         if (!response.ok) {

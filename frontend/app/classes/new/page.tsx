@@ -21,7 +21,7 @@ interface Student {
 }
 
 export default function NewClassPage() {
-  const api = process.env.API_BASE_URL
+  const api = process.env.NEXT_PUBLIC_API_BASE_URL
   const [description, setDescription] = useState("")
   const [students, setStudents] = useState<Student[]>([])
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
