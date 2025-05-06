@@ -44,15 +44,16 @@ class FaceProcessor:
         
         # Find the boundaries of the faces in the frame
         face_locations = face_recognition.face_locations(rgb_frame)
-        print("Processing frame...")
-        print(f"Detected {len(face_locations)} faces")
+        # print("Processing frame...")
+        # print(f"Detected {len(face_locations)} faces")
         if not face_locations:
-            return [], 0
+            return [], 0, [], []
         total_faces = len(face_locations)
-        # Find the encodings of the detected faces
+        # Calculate the encodings of the detected faces
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
         
-        recognized = []
+        recognized_ids = []
+        recognition_status = []
         for encoding in face_encodings:
             # Compare the detected face encodings with the known faces
             # This is the final step, Face Matching
@@ -61,9 +62,12 @@ class FaceProcessor:
             best_match = np.argmin(face_distances)
             
             if matches[best_match]:
-                recognized.append(self.known_faces[best_match][0])
-        # Return a list of recognized student IDs
-        return recognized, total_faces
+                recognized_ids.append(self.known_faces[best_match][0])
+                recognition_status.append(True)
+            else:
+                recognition_status.append(False)
+        # Returns list of recognized IDs, ammt of faces detected, array of face locations and recognition status
+        return recognized_ids, total_faces, face_locations, recognition_status
 
     # This function processes a video file and returns the recognized student IDs
     def process_video(self, video_path: str, frame_interval: int = 30):
@@ -78,7 +82,7 @@ class FaceProcessor:
                 
             # Process every nth frame to improve performance
             if frame_count % frame_interval == 0:
-                frame_ids, _ = self.process_frame(frame)
+                frame_ids, _, _, _ = self.process_frame(frame)
                 recognized_ids.update(frame_ids)
                 
             frame_count += 1

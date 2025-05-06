@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, WebSocket, UploadFile, File, HTTPException, Depends, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from database.database import SessionLocal
 from models.bout import Bout
@@ -44,7 +44,7 @@ async def video_feed(websocket: WebSocket, bout_id: int):
                 frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
                 if frame is None:
                     continue
-                recognized_ids, total_faces = processor.process_frame(frame)
+                recognized_ids, total_faces, face_locations, recognition_status = processor.process_frame(frame)
                 new_attendances = []
                 for student_id in recognized_ids:
                     existing = db.query(Attendance).filter(
@@ -67,6 +67,8 @@ async def video_feed(websocket: WebSocket, bout_id: int):
                 await websocket.send_json({
                     "recognized": recognized_ids,
                     "total_faces": total_faces,
+                    "face_locations": face_locations,
+                    "recognition_status": recognition_status,
                     "timestamp": datetime.now().isoformat()
                 })
             except WebSocketDisconnect:

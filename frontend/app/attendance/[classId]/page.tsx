@@ -34,9 +34,12 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true)
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [faceCounts, setFaceCounts] = useState({ total: 0, recognized: 0, unrecognized: 0 });
+  const [faceLocations, setFaceLocations] = useState<Array<[number, number, number, number]>>([]);
+  const [recognitionStatus, setRecognitionStatus] = useState<boolean[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null)
   const intervalRef = useRef<NodeJS.Timeout>()
 
@@ -115,6 +118,48 @@ export default function AttendancePage() {
     }
   }, [currentSessionId, isActive, toast])
 
+  // Drawing boundaries around faces
+  // Add drawing effect
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = overlayCanvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const drawBoxes = () => {
+      // Match canvas size to video display
+      const videoRect = video.getBoundingClientRect();
+      canvas.width = videoRect.width;
+      canvas.height = videoRect.height;
+      
+      // Clear previous frame
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Calculate scaling factors
+      const scaleX = videoRect.width / video.videoWidth;
+      const scaleY = videoRect.height / video.videoHeight;
+
+      // Draw all face boxes
+      faceLocations.forEach(([top, right, bottom, left], index) => {
+        const isRecognized = recognitionStatus[index] || false;
+        ctx.strokeStyle = isRecognized ? '#00FF00' : '#FF0000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(
+          left * scaleX,
+          top * scaleY,
+          (right - left) * scaleX,
+          (bottom - top) * scaleY
+        );
+      });
+
+      requestAnimationFrame(drawBoxes);
+    };
+
+    drawBoxes();
+  }, [faceLocations]);
+
   const connectWebSocket = () => {
     if (!currentSessionId) return;
     wsRef.current = new WebSocket(`${wsUrl}/ws/attendance/${currentSessionId}`)
@@ -154,6 +199,11 @@ export default function AttendancePage() {
             })
           }
         })
+      }
+
+      if (data.face_locations && data.recognition_status) {
+        setFaceLocations(data.face_locations);
+        setRecognitionStatus(data.recognition_status);
       }
 
       const total = data.total_faces || 0;
@@ -199,7 +249,7 @@ export default function AttendancePage() {
 
   const handleVideoCanPlay = () => {
     if (isActive && !intervalRef.current) {
-      intervalRef.current = setInterval(captureAndSendFrame, 500)
+      intervalRef.current = setInterval(captureAndSendFrame, 1000)
     }
   }
 
@@ -277,14 +327,20 @@ export default function AttendancePage() {
           <CardContent>
             <div className="relative aspect-video bg-slate-950 rounded-md overflow-hidden flex items-center justify-center">
               {isActive ? (
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
-                  className="w-full h-full object-cover"
-                  onCanPlay={handleVideoCanPlay}
-                />
+                <>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className="w-full h-full object-cover"
+                    onCanPlay={handleVideoCanPlay}
+                  />
+                  <canvas 
+                    ref={overlayCanvasRef} 
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                  />
+                </>
               ) : (
                 <div className="text-center text-slate-500">
                   <Camera className="h-12 w-12 mx-auto mb-2" />

@@ -3,8 +3,7 @@ CREATE TABLE IF NOT EXISTS student (
     name VARCHAR(100) NOT NULL,
     image_path VARCHAR(255) NOT NULL
 );
--- Right now, this system uses a mounted volume to store the images.
--- For deployment, we could use S3 or another cloud storage solution. Would definitely be safer.
+
 CREATE TABLE IF NOT EXISTS class (
     id SERIAL PRIMARY KEY,
     description TEXT
@@ -16,7 +15,6 @@ CREATE TABLE IF NOT EXISTS enrollment (
     PRIMARY KEY (student_id, class_id)
 );
 
--- Session and Period are keywords in sql :( had to make do with 'bout'
 CREATE TABLE IF NOT EXISTS bout (
     id SERIAL PRIMARY KEY,
     class_id INT NOT NULL REFERENCES class(id) ON DELETE CASCADE,
